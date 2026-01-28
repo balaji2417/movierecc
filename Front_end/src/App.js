@@ -8,6 +8,9 @@ import { Link } from 'react-router-dom';
       {/* Card */}
       <div className="relative">
         {/* Glow effect behind card */}
+        <div className='text-center mb-8'>
+            <h1 className="text-4xl font-bold text-white">Movie Recommender</h1>
+            </div>
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-lg opacity-50"></div>
         
         {/* Main card */}

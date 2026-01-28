@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import './App.css';
-
+import { Link,useNavigate} from 'react-router-dom';
 function Signup() {
-  // Form state
+    const Navigate=useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -101,44 +101,44 @@ function Signup() {
     setIsLoading(true);
     setSuccessMessage('');
 
-    // try {
-    //   const response = await fetch('http://localhost:5000/api/register', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       username: formData.username,
-    //       email: formData.email,
-    //       password: formData.password,
-    //       name: formData.name
-    //     }),
-    //   });
+    try {
+      const response = await fetch('http://localhost:5000/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          username: formData.username,
+          email: formData.email,
+          password: formData.password
+        }),
+      });
 
-    //   const data = await response.json();
+      const data = await response.json();
 
-    //   if (response.ok) {
-    //     setSuccessMessage('Account created successfully! Redirecting to login...');
-    //     // Clear form
-    //     setFormData({
-    //       username: '',
-    //       email: '',
-    //       password: '',
-    //       confirmPassword: '',
-    //       name: ''
-    //     });
-    //     // Redirect to login after 2 seconds
-    //     setTimeout(() => {
-    //       window.location.href = '/login';
-    //     }, 2000);
-    //   } else {
-    //     setErrors({ submit: data.error || 'Registration failed. Please try again.' });
-    //   }
-    // } catch (error) {
-    //   setErrors({ submit: 'Network error. Please check your connection.' });
-    // } finally {
-    //   setIsLoading(false);
-    // }
+      if (response.ok) {
+        setSuccessMessage('Account created successfully! Redirecting to login...');
+        // Clear form
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          name: ''
+        });
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          Navigate('/login');
+        }, 2000);
+      } else {
+        setErrors({ submit: data.error || 'Registration failed. Please try again.' });
+      }
+    } catch (error) {
+      setErrors({ submit: 'Network error. Please check your connection.' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Password strength indicator
@@ -166,12 +166,14 @@ function Signup() {
       {/* Card */}
       <div className="relative">
         {/* Glow effect behind card */}
+        
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur-lg opacity-50"></div>
         
         {/* Main card */}
-        <div className="relative bg-slate-900/90 backdrop-blur-sm px-10 py-12 rounded-2xl shadow-2xl border border-slate-700/50 w-96">
+        <div className="relative bg-slate-900/90 backdrop-blur-sm px-10 py-12 rounded-2xl shadow-2xl border border-slate-700/50 w-96 mt-10">
           {/* Header */}
           <div className="text-center mb-8">
+            
             <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-purple-500/30">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -319,9 +321,9 @@ function Signup() {
             {/* Login Link */}
             <p className="text-center text-slate-400 text-sm mt-4">
               Already have an account?{' '}
-              <a href="/login" className="text-purple-400 hover:text-purple-300 font-medium">
+              <Link to ="/login" className="text-purple-400 hover:text-purple-300 font-medium">
                 Sign In
-              </a>
+              </Link>
             </p>
           </form>
         </div>
