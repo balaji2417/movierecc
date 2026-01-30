@@ -11,12 +11,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+
+# Better CORS configuration
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
 
 # Register authentication routes
 from auth import auth_bp
+from ratings import ratings_bp
 
 app.register_blueprint(auth_bp)
+app.register_blueprint(ratings_bp)
+
+
 
 # =============================================================================
 # DATABASE CONNECTION POOL
@@ -28,9 +41,25 @@ db_config = {
     "database": os.getenv("DB_NAME", "movie_recommender"),
 }
 
+from contextlib import contextmanager
+
+@contextmanager
+def get_db_connection():
+    """Context manager for database connections - ensures proper cleanup."""
+    conn = connection_pool.get_connection()
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+def get_db():
+    """Get a database connection from the pool."""
+    return connection_pool.get_connection()
+
 connection_pool = pooling.MySQLConnectionPool(
     pool_name="movie_pool",
-    pool_size=5,
+    pool_size=10,  # Increased from 5
+    pool_reset_session=True,
     **db_config
 )
 
@@ -53,6 +82,10 @@ model_name = model_artifacts.get('model_name', 'Unknown')
 
 print(f"✓ Loaded model: {model_name}")
 print(f"✓ Features: {len(feature_names)}")
+
+print("All 28 features:")
+for i, name in enumerate(model_artifacts['feature_names']):
+    print(f"{i+1}. {name}")
 
 # =============================================================================
 # GENRE LIST (must match your training data)
@@ -78,35 +111,86 @@ def get_movies_df():
     return pd.DataFrame(movies)
 
 
+FEATURE_STATS = {
+    'popularity_log1p': {'mean': 2.438942, 'std': 0.626967},
+    'vote_average': {'mean': 6.874639, 'std': 0.839685},
+    'vote_count_log1p': {'mean': 6.388657, 'std': 1.605040},
+    'year': {'mean': 1991.810726, 'std': 15.101007},
+    'month': {'mean': 7.274652, 'std': 3.258403},
+    'day': {'mean': 15.649785, 'std': 8.482775},
+}
+
+def z_score(value, mean, std):
+    """Calculate z-score: (value - mean) / std"""
+    if std == 0:
+        return 0.0
+    return (value - mean) / std
+
+
 def prepare_features(movie_row, user_mean=3.5):
     """
     Build feature vector for a single movie.
-    Must match the feature order from training.
+    Must match the feature order from training (28 features).
     """
+    import math
+
     features = {}
 
-    # Z-scored features (use stored values or calculate)
-    z_cols = [c for c in feature_names if c.endswith('__z')]
-    for col in z_cols:
-        base_col = col.replace('__z', '')
-        if base_col in movie_row:
-            features[col] = movie_row.get(base_col, 0)
+    # 1. popularity_log1p__z
+    popularity = float(movie_row.get('popularity', 0) or 0)
+    popularity_log1p = math.log1p(popularity)  # log(1 + popularity)
+    features['popularity_log1p__z'] = z_score(
+        popularity_log1p,
+        FEATURE_STATS['popularity_log1p']['mean'],
+        FEATURE_STATS['popularity_log1p']['std']
+    )
 
-    # Genre one-hot encoding
+    # 2. vote_average__z
+    vote_average = float(movie_row.get('vote_average', 0) or 0)
+    features['vote_average__z'] = z_score(
+        vote_average,
+        FEATURE_STATS['vote_average']['mean'],
+        FEATURE_STATS['vote_average']['std']
+    )
+
+    # 3. vote_count_log1p__z
+    vote_count = float(movie_row.get('vote_count', 0) or 0)
+    vote_count_log1p = math.log1p(vote_count)
+    features['vote_count_log1p__z'] = z_score(
+        vote_count_log1p,
+        FEATURE_STATS['vote_count_log1p']['mean'],
+        FEATURE_STATS['vote_count_log1p']['std']
+    )
+
+    # 4. year__z
+    year = float(movie_row.get('release_year', 2000) or 2000)
+    features['year__z'] = z_score(
+        year,
+        FEATURE_STATS['year']['mean'],
+        FEATURE_STATS['year']['std']
+    )
+
+    # 5. month__z (default to 6 if not available)
+    features['month__z'] = z_score(6, FEATURE_STATS['month']['mean'], FEATURE_STATS['month']['std'])
+
+    # 6. day__z (default to 15 if not available)
+    features['day__z'] = z_score(15, FEATURE_STATS['day']['mean'], FEATURE_STATS['day']['std'])
+
+    # 7-26. Genre one-hot encoding
     movie_genres = str(movie_row.get('genres', '')).split('|')
     for genre in GENRES:
-        features[genre] = 1 if genre in movie_genres else 0
+        features[genre] = 1.0 if genre in movie_genres else 0.0
 
-    # Mean features
-    if 'user_mean' in feature_names:
-        features['user_mean'] = user_mean
-    if 'movie_mean' in feature_names:
-        features['movie_mean'] = movie_row.get('movie_mean', 3.5)
+    # 27. user_mean
+    features['user_mean'] = float(user_mean)
 
-    # Build vector in correct order
-    feature_vector = [features.get(f, 0) for f in feature_names]
+    # 28. movie_mean
+    features['movie_mean'] = float(movie_row.get('movie_mean', 3.5) or 3.5)
+
+    # Build vector in correct order (must match feature_names)
+    feature_vector = [features.get(f, 0.0) for f in feature_names]
+
     return np.array(feature_vector, dtype=np.float32).reshape(1, -1)
-
 
 # =============================================================================
 # API ROUTES
@@ -174,18 +258,6 @@ def get_movie(movie_id):
 
 @app.route('/api/recommend', methods=['POST'])
 def get_recommendations():
-    """
-    Get personalized movie recommendations.
-
-    Request body:
-    {
-        "user_mean": 3.5,
-        "genres": ["Action", "Sci-Fi"],
-        "min_rating": 3.5,
-        "era": "modern",
-        "limit": 10
-    }
-    """
     data = request.json or {}
 
     user_mean = data.get('user_mean', 3.5)
@@ -196,16 +268,20 @@ def get_recommendations():
 
     # Fetch movies
     movies_df = get_movies_df()
+    print(f"DEBUG: Total movies in DB: {len(movies_df)}")
 
     # Filter by era
-    if era == 'classic':
-        movies_df = movies_df[movies_df['release_year'] < 1980]
-    elif era == 'retro':
-        movies_df = movies_df[(movies_df['release_year'] >= 1980) & (movies_df['release_year'] < 2000)]
-    elif era == 'modern':
-        movies_df = movies_df[(movies_df['release_year'] >= 2000) & (movies_df['release_year'] < 2016)]
-    elif era == 'recent':
-        movies_df = movies_df[movies_df['release_year'] >= 2016]
+    if era != 'any':
+        if era == 'classic':
+            movies_df = movies_df[movies_df['release_year'] < 1980]
+        elif era == 'retro':
+            movies_df = movies_df[(movies_df['release_year'] >= 1980) & (movies_df['release_year'] < 2000)]
+        elif era == 'modern':
+            movies_df = movies_df[(movies_df['release_year'] >= 2000) & (movies_df['release_year'] < 2016)]
+        elif era == 'recent':
+            movies_df = movies_df[movies_df['release_year'] >= 2016]
+
+    print(f"DEBUG: After era filter: {len(movies_df)}")
 
     # Filter by genres
     if preferred_genres:
@@ -215,29 +291,55 @@ def get_recommendations():
 
         movies_df = movies_df[movies_df['genres'].apply(has_genre)]
 
+    print(f"DEBUG: After genre filter: {len(movies_df)}")
+
     if movies_df.empty:
         return jsonify({"recommendations": [], "message": "No movies match your criteria"})
 
-    # Predict ratings for each movie
-    predictions = []
-    for _, movie in movies_df.iterrows():
-        features = prepare_features(movie.to_dict(), user_mean)
-        pred_rating = model.predict(features)[0]
+    # Predict ratings - TEST FIRST 3 MOVIES
+    print(f"DEBUG: Testing predictions on first 3 movies...")
+    for i, (_, movie) in enumerate(movies_df.head(3).iterrows()):
+        movie_dict = movie.to_dict()
+        print(f"\nMovie {i + 1}: {movie_dict.get('title')}")
+        print(f"  - genres: {movie_dict.get('genres')}")
+        print(f"  - popularity: {movie_dict.get('popularity')}")
+        print(f"  - vote_average: {movie_dict.get('vote_average')}")
+        print(f"  - movie_mean: {movie_dict.get('movie_mean')}")
 
-        if pred_rating >= min_rating:
-            predictions.append({
-                "movie_id": int(movie['movie_id']),
-                "title": movie['title'],
-                "genres": movie['genres'],
-                "release_year": int(movie['release_year']) if pd.notna(movie['release_year']) else None,
-                "vote_average": float(movie['vote_average']) if pd.notna(movie['vote_average']) else None,
-                "popularity": float(movie['popularity']) if pd.notna(movie['popularity']) else None,
-                "predicted_rating": round(float(pred_rating), 2)
-            })
+        features = prepare_features(movie_dict, user_mean)
+        print(f"  - feature_vector (first 6): {features[0][:6]}")
+        print(f"  - feature_vector (last 2): {features[0][-2:]}")
 
-    # Sort by predicted rating and limit
-    predictions.sort(key=lambda x: x['predicted_rating'], reverse=True)
-    recommendations = predictions[:limit]
+        pred = model.predict(features)[0]
+        print(f"  - PREDICTED RATING: {pred}")
+
+    # Now do all predictions
+        # Predict ratings for each movie
+        predictions = []
+
+        for _, movie in movies_df.iterrows():
+            features = prepare_features(movie.to_dict(), user_mean)
+            raw_pred = model.predict(features)[0]
+
+            # Scale prediction from model's range (0-1) to rating range (0.5-5.0)
+            pred_rating = (raw_pred * 4.5) + 0.5
+            pred_rating = max(0.5, min(5.0, pred_rating))  # Clamp to valid range
+
+            if pred_rating >= min_rating:
+                predictions.append({
+                    "movie_id": int(movie['movie_id']),
+                    "title": movie['title'],
+                    "genres": movie['genres'],
+                    "release_year": int(movie['release_year']) if pd.notna(movie['release_year']) else None,
+                    "vote_average": float(movie['vote_average']) if pd.notna(movie['vote_average']) else None,
+                    "popularity": float(movie['popularity']) if pd.notna(movie['popularity']) else None,
+                    "poster_url": movie.get('poster_url', ''),
+                    "predicted_rating": round(float(pred_rating), 2)
+                })
+
+        # Sort by predicted rating and limit
+        predictions.sort(key=lambda x: x['predicted_rating'], reverse=True)
+        recommendations = predictions[:limit]
 
     return jsonify({
         "recommendations": recommendations,
@@ -248,7 +350,6 @@ def get_recommendations():
             "min_rating": min_rating
         }
     })
-
 
 @app.route('/api/genres', methods=['GET'])
 def get_genres():

@@ -175,9 +175,12 @@ def login():
     }
     """
     data = request.json
+    print("Hello Inside login server")
 
     username_or_email = data.get('username', '').strip().lower()
     password = data.get('password', '')
+    print("Username:",username_or_email)
+    print("Password:",password)
 
     if not username_or_email or not password:
         return jsonify({'error': 'Username/email and password are required'}), 400
@@ -188,32 +191,34 @@ def login():
     try:
         # Find user by username or email
         cursor.execute("""
-            SELECT user_id, username, name, email, password_hash, user_mean, rating_count
+            SELECT user_id, username, email, password_hash, user_mean, rating_count
             FROM users 
-            WHERE username = %s OR email = %s
-        """, (username_or_email, username_or_email))
+            WHERE username = %s
+        """, (username_or_email,))
 
         user = cursor.fetchone()
 
         if not user:
-            return jsonify({'error': 'Invalid username or password'}), 401
+            print("Not here")
+            return jsonify({'error': 'Invalid  Credentials'}), 401
 
         # Verify password
         if not check_password(password, user['password_hash']):
-            return jsonify({'error': 'Invalid username or password'}), 401
+
+            return jsonify({'error': 'Invalid Credentials','error_password':'Invalid Password'}), 401
 
         # Generate token
         token = generate_token(user['user_id'], user['username'])
-
+        print("Token:",token)
         return jsonify({
             'message': 'Login successful',
             'user': {
                 'user_id': user['user_id'],
                 'username': user['username'],
-                'name': user['name'],
                 'email': user['email'],
-                'user_mean': user['user_mean'],
-                'rating_count': user['rating_count']
+                'name': user.get('name', user['username']),  # fallback to username if no name
+                'user_mean': user.get('user_mean'),
+                'rating_count': user.get('rating_count', 0)
             },
             'token': token
         })
