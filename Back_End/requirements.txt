@@ -8,3 +8,14 @@ pandas==2.1.4
 numpy==1.26.2
 scikit-learn==1.3.2
 xgboost==2.0.3
+gunicorn==21.2.0
+```
+
+**`Procfile`** (new file):
+```
+web: gunicorn app:app
+```
+
+**`runtime.txt`** (new file):
+```
+python-3.9.18

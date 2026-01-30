@@ -13,7 +13,12 @@ load_dotenv()
 app = Flask(__name__)
 
 # Better CORS configuration
-CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {
+    "origins": [
+        "http://localhost:3000",
+        "https://your-app-name.netlify.app"  # Update after deploying
+    ]
+}}, supports_credentials=True)
 
 @app.after_request
 def after_request(response):
@@ -35,10 +40,11 @@ app.register_blueprint(ratings_bp)
 # DATABASE CONNECTION POOL
 # =============================================================================
 db_config = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME", "movie_recommender"),
+    "host": os.getenv("DB_HOST"),
+    "port": int(os.getenv("DB_PORT", 53462)),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_NAME"),
 }
 
 from contextlib import contextmanager
