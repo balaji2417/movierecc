@@ -1,6 +1,6 @@
 const config = {
   API_URL: process.env.NODE_ENV === 'production'
-    ? 'https://movie-recommender-api-w2jx.onrender.com'  // Your Render URL
+    ? 'https://movie-recommender-api-0sbx.onrender.com'
     : 'http://localhost:5000'
 };
 

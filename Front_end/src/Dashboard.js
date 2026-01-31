@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './App.css';
+import config from './config';
 
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
@@ -56,7 +57,7 @@ function Dashboard() {
   // Fetch genres
   const fetchGenres = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/genres');
+      const res = await fetch(`${config.API_URL}/api/genres`);
       const data = await res.json();
       setGenres(data.genres);
     } catch (error) {
@@ -67,7 +68,7 @@ function Dashboard() {
   // Fetch user stats
   const fetchUserStats = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/user/stats', {
+      const res = await fetch(`${config.API_URL}/api/user/stats`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
@@ -85,7 +86,7 @@ function Dashboard() {
   // Fetch user's ratings
   const fetchUserRatings = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/ratings', {
+      const res = await fetch(`${config.API_URL}/api/ratings`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
@@ -120,7 +121,7 @@ function Dashboard() {
   const fetchRecommendations = async () => {
     setIsLoadingRecs(true);
     try {
-      const res = await fetch('http://localhost:5000/api/recommend', {
+      const res = await fetch(`${config.API_URL}/api/recommend`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,7 +146,7 @@ function Dashboard() {
   // Rate a movie
   const rateMovie = async (movieId, rating) => {
     try {
-      const res = await fetch('http://localhost:5000/api/ratings', {
+      const res = await fetch(`${config.API_URL}/api/ratings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +171,7 @@ function Dashboard() {
   // Add to watchlist
   const addToWatchlist = async (movieId) => {
     try {
-      const res = await fetch('http://localhost:5000/api/watchlist', {
+      const res = await fetch(`${config.API_URL}/api/watchlist`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

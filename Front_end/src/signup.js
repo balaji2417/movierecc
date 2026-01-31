@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 import { Link,useNavigate} from 'react-router-dom';
+import config from './config';
 function Signup() {
     const Navigate=useNavigate();
   const [formData, setFormData] = useState({
@@ -102,7 +103,7 @@ function Signup() {
     setSuccessMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/register', {
+      const response = await fetch(`${config.API_URL}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

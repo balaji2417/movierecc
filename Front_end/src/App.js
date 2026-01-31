@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
 import { Link, useNavigate } from 'react-router-dom';
+import config from './config';
 
 function App() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ function App() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch(`${config.API_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
