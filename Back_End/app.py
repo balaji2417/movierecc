@@ -85,7 +85,7 @@ print("Current directory:", os.getcwd())
 print("Files in current directory:", os.listdir('.'))
 print("Files in models folder:", os.listdir('models') if os.path.exists('models') else 'models folder not found')
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models', 'best_movie_recommendation_model.pkl')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'Models', 'best_movie_recommendation_model.pkl')
 print("MODEL_PATH:", MODEL_PATH)
 print("Model file exists:", os.path.exists(MODEL_PATH))
 
