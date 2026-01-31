@@ -137,9 +137,9 @@ function App() {
                 <input type="checkbox" className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500 focus:ring-offset-0 mr-2" />
                 Remember me
               </label>
-              <a href="#" className="text-purple-400 hover:text-purple-300 transition-colors">
-                Forgot password?
-              </a>
+              <button type="button" className="text-purple-400 hover:text-purple-300 transition-colors">
+  Forgot password?
+</button>
             </div>
 
             <button
