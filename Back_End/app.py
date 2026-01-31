@@ -77,7 +77,7 @@ def get_db():
 # =============================================================================
 # LOAD ML MODEL ON STARTUP
 # =============================================================================
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models', 'best_movie_recommendation_model.pkl')
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'Models', 'best_movie_recommendation_model.pkl')
 import os
 
 # Add this near the top to debug
