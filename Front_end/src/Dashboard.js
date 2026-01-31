@@ -105,7 +105,7 @@ function Dashboard() {
   // Fetch watchlist
   const fetchWatchlist = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/watchlist', {
+      const res = await fetch(`${config.API_URL}/api/watchlist`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await res.json();
