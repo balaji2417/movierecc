@@ -2,8 +2,6 @@
 
 A full-stack movie recommendation web application that predicts personalized movie ratings using machine learning. Built with React, Flask, MySQL, and XGBoost — deployed across Netlify, Render, and Railway.
 
-**Live Demo:** [https://your-app.netlify.app](https://your-app.netlify.app)  
-**Backend API:** [https://movie-recommender-api-0sbx.onrender.com](https://movie-recommender-api-0sbx.onrender.com)
 
 ---
 
